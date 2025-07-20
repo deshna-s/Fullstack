@@ -190,7 +190,7 @@ spring.jpa.hibernate.ddl-auto=update
 ## Contact Information
 **Developer**: Deshna S  
 **GitHub**: [github.com/deshna-s](https://github.com/deshna-s)  
-**LinkedIn**: [Connect on LinkedIn]()  
+**LinkedIn**: [Connect on LinkedIn](https://www.linkedin.com/in/deshna-shah-48031a147/)  
 
 ---
 
