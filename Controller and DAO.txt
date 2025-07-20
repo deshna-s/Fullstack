@@ -1,0 +1,515 @@
+                                                                            Controller
+
+LoginController.java
+
+package com.example.controller;
+
+import com.example.dao.RecruiterDAO;
+import com.example.dao.VolunteerDAO;
+
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+//package com.mycompany.volunteeringmatching.controller;
+
+//import com.mycompany.volunteeringmatching.DAO.RecruiterDAO;
+//import com.mycompany.volunteeringmatching.DAO.VolunteerDAO;
+
+import com.example.pojo.Recruiter;
+import com.example.pojo.Volunteer;
+import jakarta.servlet.ServletException;
+import java.io.IOException;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+
+/**
+ *
+ * @author deshna
+ */
+@Controller
+public class LoginController {
+
+    @GetMapping("/registration.htm")
+    public String registration(@ModelAttribute Volunteer volunteer,@ModelAttribute Recruiter recruiter, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+        return "/Registration";
+    }
+
+    @PostMapping("/registrationMainPage.htm")
+    public String registrationMainPage(@ModelAttribute Volunteer volunteer, @ModelAttribute Recruiter recruiter, BindingResult result, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+        String userType = request.getParameter("userType");
+
+        if ("volunteer".equals(userType)) {
+            return "/VolunteerRegistration";
+        } else if ("recruiter".equals(userType)) {
+            return "/RecruiterRegistration";
+        } else {
+            return "/index";
+        }
+    }
+
+    @PostMapping("/mainPage.htm")
+    public String mainPage(HttpServletRequest request) {
+        if (request.getParameter("username").equals("admin") && request.getParameter("password").equals("password")) {
+            return "/Admin";
+        }
+        return "/index";
+    }
+
+    @PostMapping("/checkLoginVolunteer.htm")
+    public String loginAsVolunteer(@ModelAttribute Volunteer volunteer, BindingResult result, HttpServletRequest request, HttpServletResponse response, VolunteerDAO volunteerDAO) throws IOException, ServletException {
+        String un = request.getParameter("username");
+        String pw = request.getParameter("password");
+
+        Volunteer vol = volunteerDAO.checkLoginVolunteer(un, pw);
+        if (vol != null && vol.getUserName().equals(un) && vol.getPassword().equals(pw)) {
+            return "/VolunteerSeesAllJobs";
+        }
+        return "/error";
+    }
+
+    @PostMapping("/checkLoginRecruiter.htm")
+    public String loginAsRecruiter(@ModelAttribute Recruiter recruiter, BindingResult result, HttpServletRequest request, HttpServletResponse response, RecruiterDAO recruiterDAO) throws IOException, ServletException {
+        String un = request.getParameter("username");
+        String pw = request.getParameter("password");
+
+        HttpSession session = request.getSession();
+        
+        Recruiter rec = recruiterDAO.checkLoginRecruiter(un, pw);
+        if (rec != null && rec.getUserName().equals(un) && rec.getPassword().equals(pw)) {
+        	session.setAttribute("recruiter_session",rec);
+            return "common";
+        }
+        return "/error";
+    }
+
+}
+
+RecruiterController.java
+
+package com.example.controller;
+
+
+
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+//package com.mycompany.volunteeringmatching.controller;
+
+import com.example.dao.RecruiterDAO;
+import com.example.dao.VolunteerDAO;
+import com.example.pojo.Recruiter;
+import com.example.pojo.Volunteer;
+
+import java.io.File;
+import java.io.IOException;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.support.SessionStatus;
+import org.springframework.ui.Model;
+
+/**
+ *
+ * @author deshna
+ */
+
+@Controller
+public class RecruiterController {
+
+    @PostMapping("/RecruiterRegistration.htm")
+    public String RecruiterRegistration(@ModelAttribute("recruiter") Recruiter recruiter, SessionStatus status, RecruiterDAO recruiterDAO) {
+
+        recruiterDAO.saveRecruiter(recruiter);
+        status.setComplete();
+        return "/index";
+    }
+}
+
+VolunteerController.java
+
+package com.example.controller;
+
+
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+import com.example.dao.VolunteerDAO;
+import com.example.pojo.Volunteer;
+import java.io.File;
+import java.io.IOException;
+import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.support.SessionStatus;
+
+/**
+ *
+ * @author deshna
+ */
+@Controller
+public class VolunteerController {
+
+    @PostMapping("/VolunteerRegistration.htm")
+    public String VolunteerRegistration(@ModelAttribute Volunteer volunteer, BindingResult results, SessionStatus status, VolunteerDAO volunteerDAO) {
+
+        try {
+            File file = new File("C:\\Users\\shah.des\\Desktop\\Volunteer_PDFs\\", volunteer.getVolunteerId() + ".pdf");
+            volunteer.getPdf().transferTo(file);
+            volunteer.setPdfFilePath(volunteer.getVolunteerId() + ".pdf");
+        } catch (IOException ex) {
+            System.out.println("IOException: " + ex.getMessage());
+        } catch (IllegalStateException ex) {
+            System.out.println("IllegalStateException: " + ex.getMessage());
+        }
+
+        volunteerDAO.saveVolunteer(volunteer);
+
+        status.setComplete();
+        return "/index";
+    }
+
+}
+
+AddJobsController.java
+
+package com.example.controller;
+
+import java.util.List;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.ModelAndView;
+
+import com.example.dao.AddJobsDAO;
+import com.example.pojo.AddJobs;
+import com.example.pojo.Recruiter;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+
+@Controller
+public class AddJobsController {
+	@GetMapping("/AddJobs.htm")
+	public String GetForm() {
+		return "AddJobs";
+	}
+	
+	@PostMapping("/AddJobs.htm")
+	public String AddJobs(@ModelAttribute AddJobs addJobs, AddJobsDAO addjobdao, HttpServletRequest request) {
+		HttpSession session = request.getSession();
+		Recruiter recruiter = (Recruiter) session.getAttribute("recruiter_session");
+		addJobs.setRecruiter(recruiter);
+		addjobdao.saveJobs(addJobs);
+		return "common";
+	}
+	
+	@GetMapping("/getAllJobs.htm")
+	public ModelAndView getAllJobs(AddJobsDAO addjobdao) {
+		List<AddJobs> job_list = addjobdao.getAllJobs();		
+		return new ModelAndView("VolunteerSeesAllJobs","joblist",job_list);
+	}
+	
+	@GetMapping("/getJobsByRecruiterId.htm")
+    public ModelAndView getJobsByRecruiterId(AddJobsDAO addjobdao, HttpServletRequest request ) {
+		HttpSession session = request.getSession();
+		Recruiter current_recruiter = (Recruiter)session.getAttribute("recruiter_session");
+		
+		int recruiter_id = current_recruiter.getRecruiterId();
+		System.out.println(recruiter_id);
+        List<AddJobs> jobList = addjobdao.getJobsByRecruiterId(recruiter_id);
+        return new ModelAndView("common", "recruiter_joblist", jobList);
+    }
+	
+	@PostMapping("/deleteJob.htm")
+	public String deleteJob(@RequestParam("jobId") int jobId, AddJobsDAO addjobdao, HttpServletRequest request) {
+		 addjobdao.deleteJobById(jobId);
+	    return "common";
+	}
+	
+	@PostMapping("/updateJob.htm")
+	public String updateJob(@RequestParam("duration") String duration,
+			@RequestParam("jobDescription") String jobDescription,
+			@RequestParam("jobPost") String jobPost,
+			@RequestParam("jobRole") String jobRole,
+			@RequestParam("requirement") String requirement,
+			@RequestParam("salary") String salary,
+			@RequestParam("jobId") int jobId,
+			AddJobsDAO addjobdao
+			)
+	{
+		addjobdao.updateJob(jobId, duration, jobDescription, jobPost, jobRole, requirement, salary);
+		return "common";
+		
+	}
+	
+	@PostMapping("/updateForm.htm")
+	public String updateForm(@RequestParam("jobId") int jobId, Model front_model, AddJobsDAO addjobdao) {
+		AddJobs addJobs = addjobdao.getJobsById(jobId);
+		front_model.addAttribute("addJobs",addJobs);
+		return "update";
+	}
+	
+}
+
+DAO
+DAO.java
+
+package com.example.dao;
+
+//public class DAO {
+//
+//}
+
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+//package com.mycompany.volunteeringmatching.DAO;
+
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.springframework.stereotype.Repository;
+
+import com.example.demo.HibernateBean;
+
+/**
+ *
+ * @author deshna
+ */
+@Repository
+public abstract class DAO {
+
+    private static final SessionFactory sf = HibernateBean.getSessionFactory();
+
+    protected DAO() {
+    }
+
+    protected Session getSession() {
+        return sf.getCurrentSession();
+    }
+
+    public void begin() {
+        getSession().beginTransaction();
+    }
+
+    public void commit() {
+        getSession().getTransaction().commit();
+    }
+
+    public void rollback() {
+        getSession().getTransaction().rollback();
+    }
+
+    public void close() {
+        getSession().close();
+    }
+
+}
+
+Volunteer.DAO
+
+package com.example.dao;
+
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
+import com.example.pojo.Volunteer;
+import org.hibernate.query.Query;
+import org.springframework.stereotype.Component;
+
+/**
+ *
+ * @author deshna
+ */
+@Component
+public class VolunteerDAO extends DAO {
+
+    public void saveVolunteer(Volunteer volunteer) {
+        if (volunteer.getRole() == null || volunteer.getRole().isEmpty()) {
+            volunteer.setRole("Volunteer");
+        }
+        begin();
+        getSession().persist(volunteer);
+        commit();
+
+    }
+
+    public Volunteer checkLoginVolunteer(String username, String password) {
+        begin();
+        Query query = getSession().createQuery("FROM Volunteer WHERE UserName = :username AND Password = :password AND Role = 'Volunteer'", Volunteer.class);
+        query.setParameter("username", username);
+        query.setParameter("password", password);
+
+        Volunteer volunteer = (Volunteer) query.uniqueResult();
+        commit();
+        return volunteer;
+    }
+
+    
+}
+
+RecruiterDAO.java
+
+package com.example.dao;
+
+import com.example.pojo.AddJobs;
+
+//public class RecruiterDAO {
+//
+//}
+
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+//package com.mycompany.volunteeringmatching.DAO;
+
+import com.example.pojo.Recruiter;
+
+import java.util.List;
+
+import org.hibernate.query.Query;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Controller;
+
+/**
+ *
+ * @author deshna
+ */
+@Component
+public class RecruiterDAO extends DAO{
+    public void saveRecruiter(Recruiter recruiter) {
+        if (recruiter.getRole() == null || recruiter.getRole().isEmpty()) {
+            recruiter.setRole("Recruiter");
+        }
+        begin();
+        getSession().persist(recruiter);
+        commit();
+
+    }
+    
+    public Recruiter checkLoginRecruiter(String username, String password) {
+        begin();
+        Query query = getSession().createQuery("FROM Recruiter WHERE UserName = :username AND Password = :password AND Role = 'Recruiter'", Recruiter.class);
+        query.setParameter("username", username);
+        query.setParameter("password", password);
+
+        Recruiter recruiter = (Recruiter) query.uniqueResult();
+        commit();
+        return recruiter;
+    }
+    
+    
+    
+}
+
+AddJobsDAO.java
+
+package com.example.dao;
+
+//public class AddJobsDAO {
+
+//
+//}
+
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+//package com.mycompany.volunteeringmatching.DAO;
+
+import com.example.pojo.AddJobs;
+
+import java.util.List;
+
+import org.hibernate.query.Query;
+import org.springframework.stereotype.Component;
+
+/**
+ *
+ * @author deshna
+ */
+@Component
+public class AddJobsDAO extends DAO {
+	public void saveJobs(AddJobs addJobs) {
+		begin();
+		getSession().persist(addJobs);
+		commit();
+	}
+	
+	public List<AddJobs> getAllJobs(){
+		begin();
+		Query query = getSession().createQuery("FROM AddJobs", AddJobs.class);
+		List<AddJobs> query_list  = query.list();
+		commit();
+		close();
+		return query_list;
+	}
+	
+	public List<AddJobs> getJobsByRecruiterId(int recruiterId) {
+    	begin();
+        Query<AddJobs> query = getSession().createQuery("FROM AddJobs WHERE recruiter.recruiterId = :recruiterId", AddJobs.class);
+        query.setParameter("recruiterId", recruiterId);
+        List<AddJobs> queryList = query.list();
+        commit();
+        close();
+        return queryList;
+    }
+	
+	public AddJobs getJobsById(int jobId) {
+    	begin();
+        Query query = getSession().createQuery("FROM AddJobs WHERE jobId = :jobId", AddJobs.class);
+        query.setParameter("jobId", jobId);
+        AddJobs job = (AddJobs)query.uniqueResult();
+        commit();
+        close();
+        return job;
+    }
+	
+	public void deleteJobById(int jobId) {
+	    begin();
+	    Query query = getSession().createQuery("DELETE FROM AddJobs WHERE jobId = :jobId");
+	    query.setParameter("jobId", jobId);
+	    query.executeUpdate();
+	    commit();
+	    close();
+	}
+	
+	public void updateJob(int jobId, String duration, String jobDescription, String jobPost, String jobRole, String requirement, String salary) {
+	    begin();
+	    Query query = getSession().createQuery("UPDATE AddJobs SET duration = :duration, jobDescription = :jobDescription, jobPost =:jobPost, jobRole = :jobRole, requirement = :requirement, salary =:salary WHERE jobId = :jobId");
+	    query.setParameter("duration", duration );
+	    query.setParameter("jobDescription", jobDescription);
+	    query.setParameter("jobPost", jobPost);
+	    query.setParameter("jobRole", jobRole);
+	    query.setParameter("requirement", requirement);
+	    query.setParameter("salary", salary);
+	    query.setParameter("jobId", jobId);
+	    query.executeUpdate();
+	    commit();
+	    close();
+	}
+}
+
+
+
